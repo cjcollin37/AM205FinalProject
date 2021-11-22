@@ -39,6 +39,4 @@ def func(x, N_x_tot, planet, star, gas):
     C = ((planet.mass*(1-planet.CMF))*(gas.alpha*ppmw_convert))/gas.mu
     
     f = B*x + C*meltfraction.psi(x, planet, star, gas)*x**(1/gas.beta) - N_x_tot
-    #f = B*x + C*x**(1/gas.beta) - N_x_tot
-    #f = x**2 - 4
     return f
