@@ -15,7 +15,7 @@ def func(x, N_x_tot, planet, star, gas):
     
     Inputs: 
         
-    x: pressure [bar]
+    x: pressure [Pa]
     N_x_tot: total number of moles in system
     t: time [yr]
     planet
