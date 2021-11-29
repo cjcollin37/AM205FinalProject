@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Created on Wed Nov 10 14:37:23 2021
 
@@ -8,8 +10,14 @@ Created on Wed Nov 10 14:37:23 2021
 
 #   To-do:
 # ------------
-# - Figure out how to format plot labels with both f-string and latex subscript
-# - Re-do evolution over time- plot versus array of pressure as it evolves over time, not arbitrarily defined pressure array
+# - Figure out how to format plot labels with f-string and latex subscripts
+
+# - Validate the code! Make sure everything is working correctly and conserving moles of species
+# - Change volume of magma ocean, see what partitioning is- check that you get constant for N_tot
+#       - Plot melt fraction (psi) (define array for psi in the model) vs. moles: MO, atm., total
+#       - Produce this plot for CO2, then for different species to see how it varies
+
+
 
 
 
@@ -24,7 +32,6 @@ import scipy.misc
 # Import modules
 import func
 import moles
-
 
 
 
@@ -100,7 +107,7 @@ venus =  Planet(4.8675e24,6051800, 8.87, 0.7, 0.3, 1.07712e11, 2700, 620, 1e4)
 
 # Gas properties of ideal gas at T = 300 K
 co2 = Gas(188.92, 849, .0440095, 1.937e-9, 0.714)
-co2_exp = Gas(188.92, 849, .0440095, 1.25e-3, 0.714) # with experimental alpha value
+co2_exp = Gas(188.92, 849, .0440095, 1.25e-3, 0.714) # CO2 data with experimental alpha value (expect partitioning to be roughly equal at this alpha)
 h2o = Gas(461.5, 1872.3, .018015, 1.033e0, 1.747)
 h2 = Gas(412.4, 14307, .002016, 2.572e-6, 1.000)
 ch4 = Gas(518.2, 2253.7, .016043, 9.937e-8, 1.000)
@@ -113,7 +120,9 @@ sun = Star(3.828e26, 4.499e9)
 bar_to_pascal = 1e5
 
 # Initialize other variables
+# Time array
 t = np.linspace(0,4.4999e9) # [yr]
+# Pressure array
 p_s = np.linspace(0.01, 1e7) # [Pa]
 
 
@@ -146,7 +155,7 @@ def newton(x0, N_x_tot, planet, star, gas, tol=1.49012e-08, max_iter=10000):
     
     while (abs(xnew-xold) > tol):
         fxnew = func.func(xnew, N_x_tot, planet, star, gas)
-        fprimenew = scipy.misc.derivative(func.func, xnew, args = (N_x_tot, venus, sun, co2_exp))
+        fprimenew = scipy.misc.derivative(func.func, xnew, args = (N_x_tot, planet, star, gas))
         numits = numits + 1
         
         xold = xnew
@@ -155,6 +164,7 @@ def newton(x0, N_x_tot, planet, star, gas, tol=1.49012e-08, max_iter=10000):
         root = xnew
 
     return root  # Returns the point at which function = 0
+
 
 
 
@@ -169,20 +179,27 @@ plt.xlabel('Pressure [Pa]', size='x-large')
 plt.ylabel('f($p_{H2O}$)', size='x-large')
 plt.grid()
 
-root = newton(1e7, N_x_tot, venus, sun, co2)
-# # root = newton(1e7, N_x_tot, venus, sun, co2)
+
+# root = newton(1e7, N_x_tot, venus, sun, co2)
+root = newton(1e7, N_x_tot, venus, sun, co2_exp)
 print('Root at:', root)
 
 plt.scatter(root, 0, label= 'pressure of $CO_2$ = {} Pa'.format(root))
 plt.legend()
 plt.show()
 
+N_atm_root, N_mo_root = moles.partitioning(root, venus, sun, co2_exp)
+print('Root returns:', N_atm_root, N_mo_root)
 
 
 
 
 
-# Calculate partitioning from moles function
+
+
+
+
+# * Calculate partitioning from moles function
 N_atm, N_mo = moles.partitioning(p_s, venus, sun, h2o)
 Total = N_atm + N_mo
 print('Total = ', Total)
@@ -201,20 +218,6 @@ plt.show()
 
 
 
-# * Plotting Partitioning over time
-plt.plot(t, N_atm, label='Moles in atmosphere')
-plt.plot(t, N_mo, label='Moles in magma ocean')
-# plt.plot(t, Total, label='Total')
-plt.title('Partitioning over time')
-plt.xlabel('Time [yr]')
-plt.ylabel('$H_2O$ Abundance [moles]')
-plt.legend()
-plt.grid()
-plt.show()
-
-
-
-
 
 # # * Plotting  Magma Ocean Partitioning by pressure for different species
 N_atm_co2, N_mo_co2 = moles.partitioning(p_s, venus, sun, co2)
@@ -223,6 +226,14 @@ N_atm_h2, N_mo_h2 = moles.partitioning(p_s, venus, sun, h2)
 N_atm_ch4, N_mo_ch4 = moles.partitioning(p_s, venus, sun, ch4)
 N_atm_n2, N_mo_n2 = moles.partitioning(p_s, venus, sun, n2)
 N_atm_co, N_mo_co = moles.partitioning(p_s, venus, sun, co)
+
+
+total_co2 = N_atm_co2 + N_mo_co2
+total_h2o = N_atm_h2o + N_mo_h2o
+total_co = N_atm_co + N_mo_co
+total_h2 = N_atm_h2 + N_mo_h2
+total_ch4 = N_atm_ch4 + N_mo_ch4
+total_n2 = N_atm_n2 + N_mo_n2
 
 plt.plot(p_s, N_mo_co2, label='CO2', color='firebrick')
 # plt.plot(p_s, N_mo_h2o, label='H2O', color='steelblue')
@@ -240,27 +251,26 @@ plt.show()
 
 
 
-
+## Lol is any of this correct
 # * Plotting Total Partitioning over time for different species
-plt.plot(t, N_mo_co2, label='MO CO2', color='firebrick')
-plt.plot(t, N_atm_co2, '--', label='Atm CO2', color='firebrick')
-plt.plot(t, N_mo_h2o, '--', label='MO H2O', color='steelblue')
-plt.plot(t, N_atm_h2o, '--', label='Atm H2O', color='steelblue')
-plt.plot(t, N_mo_h2, label='MO H2', color='green')
-plt.plot(t, N_atm_h2,'--', label='Atm H2', color='green')
-plt.plot(t, N_mo_ch4, label='MO CH4', color='mediumvioletred')
-plt.plot(t, N_mo_ch4, label='Atm CH4', color='mediumvioletred')
-plt.plot(t, N_mo_n2, label='MO N2')
-plt.plot(t, N_atm_n2, '--', label='Atm N2')
-plt.plot(t, N_mo_co, label='MO CO', color='peru')
-plt.plot(t, N_atm_co, '--', label='Atm CO', color='peru')
-plt.title('Partitioning over time')
-plt.xlabel('Time [Yr]')
-plt.ylabel('Abundance [moles]')
-plt.legend()
-plt.grid()
-plt.show()
-
+# plt.loglog(t, N_mo_co2, label='MO CO2', color='firebrick')
+# plt.loglog(t, N_atm_co2, '--', label='Atm CO2', color='firebrick')
+# plt.loglog(t, N_mo_h2o, '--', label='MO H2O', color='steelblue')
+# plt.loglog(t, N_atm_h2o, '--', label='Atm H2O', color='steelblue')
+# plt.loglog(t, N_mo_h2, label='MO H2', color='green')
+# plt.loglog(t, N_atm_h2,'--', label='Atm H2', color='green')
+# plt.loglog(t, N_mo_ch4, label='MO CH4', color='mediumvioletred')
+# plt.loglog(t, N_mo_ch4, label='Atm CH4', color='mediumvioletred')
+# plt.loglog(t, N_mo_n2, label='MO N2')
+# plt.loglog(t, N_atm_n2, '--', label='Atm N2')
+# plt.loglog(t, N_mo_co, label='MO CO', color='peru')
+# plt.loglog(t, N_atm_co, '--', label='Atm CO', color='peru')
+# plt.title('Partitioning over time')
+# plt.xlabel('log(Time) [Yr]')
+# plt.ylabel('Abundance [moles]')
+# plt.legend(bbox_to_anchor=(1.3, 0.5), loc='right')
+# plt.grid()
+# plt.show()
 
 
 
@@ -289,7 +299,3 @@ plt.xlim(0.01,1e6)
 plt.xlabel(' Gas Phase Pressure, $p_{vapor}^i [bar]$')
 plt.ylabel('Volatile Solubility, $X_{magma}^i$ [ppmw]')
 plt.legend()
-
-
-
-
